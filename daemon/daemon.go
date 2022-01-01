@@ -119,8 +119,6 @@ func Run(configFile string, gitVersion string, buildDate string, gitRevision str
 	// Initialise early so we can trace out config parsing.
 	logutils.ConfigureEarlyLogging()
 
-	ctx := context.Background()
-
 	if os.Getenv("GOGC") == "" {
 		// Tune the GC to trade off a little extra CPU usage for significantly lower
 		// occupancy at high scale.  This is worthwhile because Felix runs per-host so
@@ -218,54 +216,6 @@ configRetry:
 		// Each time round this loop, check that we're serving health reports if we should
 		// be, or cancel any existing server if we should not be serving any more.
 		healthAggregator.ServeHTTP(configParams.HealthEnabled, configParams.HealthHost, configParams.HealthPort)
-
-		// We should now have enough config to connect to the datastore
-		// so we can load the remainder of the config.
-		datastoreConfig = configParams.DatastoreConfig()
-		// Can't dump the whole config because it may have sensitive information...
-		log.WithField("datastore", datastoreConfig.Spec.DatastoreType).Info("Connecting to datastore")
-		v3Client, err = client.New(datastoreConfig)
-		if err != nil {
-			log.WithError(err).Error("Failed to create datastore client")
-			time.Sleep(1 * time.Second)
-			continue configRetry
-		}
-		log.Info("Created datastore client")
-		numClientsCreated++
-		backendClient = v3Client.(interface{ Backend() bapi.Client }).Backend()
-		for {
-			globalConfig, hostConfig, err := loadConfigFromDatastore(
-				ctx, backendClient, datastoreConfig, configParams.FelixHostname)
-			if err == ErrNotReady {
-				log.Warn("Waiting for datastore to be initialized (or migrated)")
-				time.Sleep(1 * time.Second)
-				healthAggregator.Report(healthName, &health.HealthReport{Live: true, Ready: true})
-				continue
-			} else if err != nil {
-				log.WithError(err).Error("Failed to get config from datastore")
-				time.Sleep(1 * time.Second)
-				continue configRetry
-			}
-			_, err = configParams.UpdateFrom(globalConfig, config.DatastoreGlobal)
-			if err != nil {
-				log.WithError(err).Error("Failed update global config from datastore")
-				time.Sleep(1 * time.Second)
-				continue configRetry
-			}
-			_, err = configParams.UpdateFrom(hostConfig, config.DatastorePerHost)
-			if err != nil {
-				log.WithError(err).Error("Failed update host config from datastore")
-				time.Sleep(1 * time.Second)
-				continue configRetry
-			}
-			break
-		}
-		err = configParams.Validate()
-		if err != nil {
-			log.WithError(err).Error("Failed to parse/validate configuration from datastore.")
-			time.Sleep(1 * time.Second)
-			continue configRetry
-		}
 
 		// We now have some config flags that affect how we configure the syncer.
 		// After loading the config from the datastore, reconnect, possibly with new

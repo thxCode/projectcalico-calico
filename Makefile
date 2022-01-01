@@ -108,6 +108,11 @@ FV_BATCHES_TO_RUN?=$(shell seq $(FV_NUM_BATCHES))
 FV_SLOW_SPEC_THRESH=90
 FV_RACE_DETECTOR_ENABLED?=true
 
+# Hijack common makefile
+GIT_DESCRIPTION=$(shell git describe --tags --always --abbrev=12 2>/dev/null | sed -e 's/-.*$$//' || echo '<unknown>')
+GIT_COMMIT=$(shell git rev-parse $(GIT_DESCRIPTION) || echo '<unknown>')
+BUILD_ID=$(shell git rev-parse $(GIT_DESCRIPTION) || uuidgen | sed 's/-//g')
+
 # Linker flags for building Felix.
 #
 # We use -X to insert the version information into the placeholder variables

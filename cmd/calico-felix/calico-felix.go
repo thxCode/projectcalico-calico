@@ -31,6 +31,7 @@ Usage:
 Options:
   -c --config-file=<filename>  Config file to load [default: /etc/calico/felix.cfg].
   --version                    Print the version and exit.
+  --cleanup                    Cleanup ACLs.
 `
 
 // main is the entry point to the calico-felix binary.
@@ -46,6 +47,12 @@ func main() {
 		log.Fatalf("Failed to parse usage, exiting: %v", err)
 	}
 	configFile := arguments["--config-file"].(string)
+
+	// Cleanup ACLs created by felix.
+	if cleanup, _ := arguments.Bool("--cleanup"); cleanup {
+		daemon.Cleanup(configFile, buildinfo.GitVersion, buildinfo.GitRevision, buildinfo.BuildDate)
+		return
+	}
 
 	// Execute felix.
 	daemon.Run(configFile, buildinfo.GitVersion, buildinfo.GitRevision, buildinfo.BuildDate)

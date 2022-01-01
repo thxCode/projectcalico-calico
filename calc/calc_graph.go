@@ -19,14 +19,15 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	v3 "github.com/projectcalico/api/pkg/apis/projectcalico/v3"
+	"github.com/projectcalico/libcalico-go/lib/backend/api"
+	"github.com/projectcalico/libcalico-go/lib/backend/model"
+	"github.com/projectcalico/libcalico-go/lib/net"
+
 	"github.com/projectcalico/felix/config"
 	"github.com/projectcalico/felix/dispatcher"
 	"github.com/projectcalico/felix/labelindex"
 	"github.com/projectcalico/felix/proto"
 	"github.com/projectcalico/felix/serviceindex"
-	"github.com/projectcalico/libcalico-go/lib/backend/api"
-	"github.com/projectcalico/libcalico-go/lib/backend/model"
-	"github.com/projectcalico/libcalico-go/lib/net"
 )
 
 var (
@@ -366,22 +367,6 @@ func NewCalculationGraph(callbacks PipelineCallbacks, conf *config.Config) *Calc
 		vxlanResolver := NewVXLANResolver(hostname, callbacks, conf.UseNodeResourceUpdates())
 		vxlanResolver.RegisterWith(allUpdDispatcher)
 	}
-
-	// Register for config updates.
-	//
-	//        ...
-	//     Dispatcher (all updates)
-	//         |
-	//         | separate config updates foo=bar, baz=biff
-	//         |
-	//       config batcher
-	//         |
-	//         | combined config {foo=bar, bax=biff}
-	//         |
-	//      <dataplane>
-	//
-	configBatcher := NewConfigBatcher(hostname, callbacks)
-	configBatcher.RegisterWith(allUpdDispatcher)
 
 	// The profile decoder identifies objects with special dataplane significance which have
 	// been encoded as profiles by libcalico-go. At present this includes Kubernetes Service
