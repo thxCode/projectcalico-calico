@@ -222,6 +222,22 @@ configRetry:
 		// config.  We don't need to re-load the configuration _again_ because the
 		// calculation graph will spot if the config has changed since we were initialised.
 		datastoreConfig = configParams.DatastoreConfig()
+
+		// NB(thxCode): get customized kube client options
+		var (
+			customizedQPS               = float32(configParams.KubeClientQPS)
+			customizedBurst             = configParams.KubeClientBurst
+			customizedTimeout           = configParams.KubeClientTimeout
+			customizedAcceptContentType = configParams.KubeClientAcceptContentTypes
+			customizedContentType       = configParams.KubeClientContentType
+			customizedUserAgent         = configParams.KubeClientUserAgent
+		)
+		datastoreConfig.Spec.K8sClientQPS = customizedQPS
+		datastoreConfig.Spec.K8sClientBurst = customizedBurst
+		datastoreConfig.Spec.K8sClientTimeout = customizedTimeout
+		datastoreConfig.Spec.K8sClientAcceptContentTypes = customizedAcceptContentType
+		datastoreConfig.Spec.K8sClientContentType = customizedContentType
+		datastoreConfig.Spec.K8sClientUserAgent = customizedUserAgent
 		backendClient, err = backend.NewClient(datastoreConfig)
 		if err != nil {
 			log.WithError(err).Error("Failed to (re)connect to datastore")
@@ -241,6 +257,12 @@ configRetry:
 			// Not using KDD, fall back on trying to get a Kubernetes client from the environment.
 			log.Info("Not using Kubernetes datastore driver, trying to get a Kubernetes client...")
 			k8sconf, err := rest.InClusterConfig()
+			k8sconf.QPS = customizedQPS
+			k8sconf.Burst = customizedBurst
+			k8sconf.Timeout = customizedTimeout
+			k8sconf.AcceptContentTypes = customizedAcceptContentType
+			k8sconf.ContentType = customizedContentType
+			k8sconf.UserAgent = customizedUserAgent
 			if err != nil {
 				log.WithError(err).Info("Kubernetes in-cluster config not available. " +
 					"Assuming we're not in a Kubernetes deployment.")
