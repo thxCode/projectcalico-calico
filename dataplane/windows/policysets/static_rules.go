@@ -54,14 +54,16 @@ func (p staticACLRule) ToHnsACLPolicy(prefix string) (*hns.ACLPolicy, error) {
 	if len(p.Id) == 0 {
 		return nil, fmt.Errorf("'Id' is missing")
 	}
-	if p.Priority == 0 {
-		return nil, fmt.Errorf("'Priority' should not be zero")
-	}
 	if p.Type != hns.ACL {
 		return nil, fmt.Errorf("'Type' is not ACL")
 	}
 	if (p.RuleType != hns.Host) && (p.RuleType != hns.Switch) {
 		return nil, fmt.Errorf("'RuleType' %s is invalid", p.RuleType)
+	}
+	if p.Priority == 0 {
+		if p.RuleType != hns.Host {
+			return nil, fmt.Errorf("'Priority' of none Host 'RuleType' should not be zero")
+		}
 	}
 	if (p.Action != hns.Allow) && (p.Action != hns.Block) {
 		return nil, fmt.Errorf("'Action' %s is invalid", p.Action)
